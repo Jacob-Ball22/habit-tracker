@@ -151,6 +151,88 @@ QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
     height: 0;
 }
 
+/* ── Section headers in habit view ── */
+QLabel#sectionHeader {
+    color: #888;
+    font-size: 11px;
+    font-weight: bold;
+    letter-spacing: 0.5px;
+    margin-top: 4px;
+}
+QFrame#sectionDivider {
+    color: #c8ccd0;
+    margin: 4px 0;
+}
+
+/* ── Drag handle ── */
+QLabel#dragHandle {
+    color: #aaa;
+    font-size: 16px;
+    padding: 0 6px 0 0;
+}
+
+/* ── Archive button ── */
+QPushButton#archiveBtn {
+    background-color: #6e7781;
+    border-color: #6e7781;
+    color: #ffffff;
+}
+QPushButton#archiveBtn:hover {
+    background-color: #57606a;
+}
+
+/* ── Restore button ── */
+QPushButton#restoreBtn {
+    background-color: #0969da;
+    border-color: #0969da;
+    color: #ffffff;
+}
+QPushButton#restoreBtn:hover {
+    background-color: #0860ca;
+}
+
+/* ── Chart toggle button ── */
+QPushButton#chartToggleBtn {
+    background-color: transparent;
+    border: 1px solid #c8ccd0;
+    border-radius: 4px;
+    padding: 0;
+    font-size: 14px;
+    color: #57606a;
+}
+QPushButton#chartToggleBtn:hover {
+    background-color: #e8eaed;
+}
+
+/* ── Archived sidebar button ── */
+QPushButton#archivedBtn {
+    background-color: #57606a;
+    border-color: #57606a;
+    color: #ffffff;
+    font-size: 12px;
+}
+QPushButton#archivedBtn:checked {
+    background-color: #0969da;
+    border-color: #0969da;
+}
+
+/* ── Checkboxes in dialogs ── */
+QCheckBox {
+    color: #1a1a1a;
+    spacing: 4px;
+}
+QCheckBox::indicator {
+    width: 14px;
+    height: 14px;
+    border: 1px solid #57606a;
+    border-radius: 3px;
+    background-color: #ffffff;
+}
+QCheckBox::indicator:checked {
+    background-color: #0969da;
+    border-color: #0969da;
+}
+
 /* ── Message boxes ── */
 QMessageBox {
     background-color: #ffffff;
@@ -302,6 +384,88 @@ QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
     height: 0;
 }
 
+/* ── Section headers in habit view ── */
+QLabel#sectionHeader {
+    color: #8b949e;
+    font-size: 11px;
+    font-weight: bold;
+    letter-spacing: 0.5px;
+    margin-top: 4px;
+}
+QFrame#sectionDivider {
+    color: #30363d;
+    margin: 4px 0;
+}
+
+/* ── Drag handle ── */
+QLabel#dragHandle {
+    color: #8b949e;
+    font-size: 16px;
+    padding: 0 6px 0 0;
+}
+
+/* ── Archive button ── */
+QPushButton#archiveBtn {
+    background-color: #6e7781;
+    border-color: #6e7781;
+    color: #ffffff;
+}
+QPushButton#archiveBtn:hover {
+    background-color: #8b949e;
+}
+
+/* ── Restore button ── */
+QPushButton#restoreBtn {
+    background-color: #1f6feb;
+    border-color: #1f6feb;
+    color: #ffffff;
+}
+QPushButton#restoreBtn:hover {
+    background-color: #388bfd;
+}
+
+/* ── Chart toggle button ── */
+QPushButton#chartToggleBtn {
+    background-color: transparent;
+    border: 1px solid #30363d;
+    border-radius: 4px;
+    padding: 0;
+    font-size: 14px;
+    color: #8b949e;
+}
+QPushButton#chartToggleBtn:hover {
+    background-color: #21262d;
+}
+
+/* ── Archived sidebar button ── */
+QPushButton#archivedBtn {
+    background-color: #30363d;
+    border-color: #30363d;
+    color: #c9d1d9;
+    font-size: 12px;
+}
+QPushButton#archivedBtn:checked {
+    background-color: #1f6feb;
+    border-color: #1f6feb;
+}
+
+/* ── Checkboxes in dialogs ── */
+QCheckBox {
+    color: #e6edf3;
+    spacing: 4px;
+}
+QCheckBox::indicator {
+    width: 14px;
+    height: 14px;
+    border: 1px solid #8b949e;
+    border-radius: 3px;
+    background-color: #161b22;
+}
+QCheckBox::indicator:checked {
+    background-color: #1f6feb;
+    border-color: #1f6feb;
+}
+
 /* ── Message boxes ── */
 QMessageBox {
     background-color: #0d1117;
@@ -338,6 +502,7 @@ class MainWindow(QMainWindow):
 
         self.sidebar.category_selected.connect(self.habit_view.set_category_filter)
         self.sidebar.add_habit_requested.connect(self.habit_view.show_add_habit_dialog)
+        self.sidebar.archived_selected.connect(self.habit_view.show_archived_view)
         self.habit_view.settings_requested.connect(self._open_settings)
 
     def set_theme(self, theme: str) -> None:

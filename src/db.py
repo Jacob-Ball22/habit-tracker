@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import csv
 import sqlite3
 from pathlib import Path
 from typing import Iterable, List, Optional
@@ -51,6 +52,15 @@ def init_db() -> None:
     """
     with get_connection() as conn:
         conn.executescript(schema)
+        # Migrate existing databases: add new columns if missing
+        for col, defn in [
+            ("sort_order", "INTEGER DEFAULT 0"),
+            ("frequency", "TEXT DEFAULT 'daily'"),
+        ]:
+            try:
+                conn.execute(f"ALTER TABLE habits ADD COLUMN {col} {defn};")
+            except sqlite3.OperationalError:
+                pass  # Column already exists
 
 
 def list_categories() -> List[Category]:
@@ -77,47 +87,7 @@ def create_category(name: str, color: str = "#4CAF50") -> Category:
     return Category(id=row["id"], name=row["name"], color=row["color"])
 
 
-def list_habits(category_id: Optional[int] = None) -> List[Habit]:
-    """Return habits, optionally filtered by category."""
-
-    query = "SELECT id, name, description, category_id, created_at, is_active FROM habits"
-    params: Iterable[object] = ()
-    if category_id is not None:
-        query += " WHERE category_id = ?"
-        params = (category_id,)
-    query += " ORDER BY created_at DESC, name;"
-    with get_connection() as conn:
-        rows = conn.execute(query, params).fetchall()
-    return [
-        Habit(
-            id=row["id"],
-            name=row["name"],
-            description=row["description"],
-            category_id=row["category_id"],
-            created_at=date.fromisoformat(row["created_at"]),
-            is_active=bool(row["is_active"]),
-        )
-        for row in rows
-    ]
-
-
-def create_habit(
-    name: str,
-    description: Optional[str],
-    category_id: int,
-) -> Habit:
-    """Create and return a new habit."""
-
-    with get_connection() as conn:
-        cur = conn.execute(
-            "INSERT INTO habits (name, description, category_id) VALUES (?, ?, ?);",
-            (name, description, category_id),
-        )
-        habit_id = cur.lastrowid
-        row = conn.execute(
-            "SELECT id, name, description, category_id, created_at, is_active FROM habits WHERE id = ?;",
-            (habit_id,),
-        ).fetchone()
+def _row_to_habit(row: sqlite3.Row) -> Habit:
     return Habit(
         id=row["id"],
         name=row["name"],
@@ -125,7 +95,69 @@ def create_habit(
         category_id=row["category_id"],
         created_at=date.fromisoformat(row["created_at"]),
         is_active=bool(row["is_active"]),
+        sort_order=row["sort_order"] if row["sort_order"] is not None else 0,
+        frequency=row["frequency"] or "daily",
     )
+
+
+def list_habits(category_id: Optional[int] = None) -> List[Habit]:
+    """Return active habits, optionally filtered by category."""
+
+    conditions = ["is_active = 1"]
+    params: list[object] = []
+    if category_id is not None:
+        conditions.append("category_id = ?")
+        params.append(category_id)
+
+    where = " AND ".join(conditions)
+    query = (
+        f"SELECT id, name, description, category_id, created_at, is_active, sort_order, frequency "
+        f"FROM habits WHERE {where} ORDER BY sort_order ASC, created_at DESC, name;"
+    )
+    with get_connection() as conn:
+        rows = conn.execute(query, params).fetchall()
+    return [_row_to_habit(row) for row in rows]
+
+
+def list_archived_habits(category_id: Optional[int] = None) -> List[Habit]:
+    """Return archived (inactive) habits, optionally filtered by category."""
+
+    conditions = ["is_active = 0"]
+    params: list[object] = []
+    if category_id is not None:
+        conditions.append("category_id = ?")
+        params.append(category_id)
+
+    where = " AND ".join(conditions)
+    query = (
+        f"SELECT id, name, description, category_id, created_at, is_active, sort_order, frequency "
+        f"FROM habits WHERE {where} ORDER BY name;"
+    )
+    with get_connection() as conn:
+        rows = conn.execute(query, params).fetchall()
+    return [_row_to_habit(row) for row in rows]
+
+
+def create_habit(
+    name: str,
+    description: Optional[str],
+    category_id: int,
+    frequency: str = "daily",
+) -> Habit:
+    """Create and return a new habit."""
+
+    with get_connection() as conn:
+        cur = conn.execute(
+            "INSERT INTO habits (name, description, category_id, frequency) VALUES (?, ?, ?, ?);",
+            (name, description, category_id, frequency),
+        )
+        habit_id = cur.lastrowid
+        row = conn.execute(
+            "SELECT id, name, description, category_id, created_at, is_active, sort_order, frequency "
+            "FROM habits WHERE id = ?;",
+            (habit_id,),
+        ).fetchone()
+    return _row_to_habit(row)
 
 
 def list_completions(habit_id: int) -> List[Completion]:
@@ -180,19 +212,67 @@ def update_habit(
     name: str,
     description: Optional[str],
     category_id: int,
+    frequency: str = "daily",
 ) -> None:
-    """Update name, description, and category for an existing habit."""
+    """Update name, description, category, and frequency for an existing habit."""
 
     with get_connection() as conn:
         conn.execute(
-            "UPDATE habits SET name = ?, description = ?, category_id = ? WHERE id = ?;",
-            (name, description, category_id, habit_id),
+            "UPDATE habits SET name = ?, description = ?, category_id = ?, frequency = ? WHERE id = ?;",
+            (name, description, category_id, frequency, habit_id),
         )
 
 
+def archive_habit(habit_id: int) -> None:
+    """Soft-delete a habit by marking it inactive (preserves history)."""
+
+    with get_connection() as conn:
+        conn.execute("UPDATE habits SET is_active = 0 WHERE id = ?;", (habit_id,))
+
+
+def restore_habit(habit_id: int) -> None:
+    """Restore an archived habit back to active."""
+
+    with get_connection() as conn:
+        conn.execute("UPDATE habits SET is_active = 1 WHERE id = ?;", (habit_id,))
+
+
 def delete_habit(habit_id: int) -> None:
-    """Delete a habit and all its completion records."""
+    """Permanently delete a habit and all its completion records."""
 
     with get_connection() as conn:
         conn.execute("DELETE FROM completions WHERE habit_id = ?;", (habit_id,))
         conn.execute("DELETE FROM habits WHERE id = ?;", (habit_id,))
+
+
+def update_sort_orders(ordered_ids: list[int]) -> None:
+    """Persist a new display order for habits given as an ordered list of IDs."""
+
+    with get_connection() as conn:
+        for i, habit_id in enumerate(ordered_ids):
+            conn.execute("UPDATE habits SET sort_order = ? WHERE id = ?;", (i, habit_id))
+
+
+def export_to_csv(filepath: str) -> None:
+    """Export all habit completion history to a CSV file."""
+
+    with get_connection() as conn:
+        rows = conn.execute(
+            """
+            SELECT
+                h.name        AS habit_name,
+                c.name        AS focus_area,
+                co.completed_date
+            FROM habits h
+            JOIN categories c ON c.id = h.category_id
+            LEFT JOIN completions co ON co.habit_id = h.id
+            ORDER BY h.name, co.completed_date;
+            """
+        ).fetchall()
+
+    with open(filepath, "w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow(["Habit Name", "Focus Area", "Completed Date"])
+        for row in rows:
+            if row["completed_date"]:
+                writer.writerow([row["habit_name"], row["focus_area"], row["completed_date"]])

@@ -8,11 +8,16 @@ from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtWidgets import (
     QDialog,
     QDialogButtonBox,
+    QFileDialog,
     QLabel,
+    QMessageBox,
+    QPushButton,
     QRadioButton,
     QVBoxLayout,
     QWidget,
 )
+
+from ..db import export_to_csv
 
 
 class SettingsDialog(QDialog):
@@ -31,9 +36,10 @@ class SettingsDialog(QDialog):
         layout = QVBoxLayout(self)
         layout.setSpacing(8)
 
-        title = QLabel("Appearance")
-        title.setStyleSheet("font-weight: bold; font-size: 14px;")
-        layout.addWidget(title)
+        # ── Appearance ───────────────────────────────────────────────────────
+        appearance_lbl = QLabel("Appearance")
+        appearance_lbl.setStyleSheet("font-weight: bold; font-size: 14px;")
+        layout.addWidget(appearance_lbl)
 
         self._light_radio = QRadioButton("Default (Light)")
         self._dark_radio = QRadioButton("Dark Mode")
@@ -45,8 +51,20 @@ class SettingsDialog(QDialog):
 
         layout.addWidget(self._light_radio)
         layout.addWidget(self._dark_radio)
+        layout.addSpacing(12)
+
+        # ── Data export ──────────────────────────────────────────────────────
+        data_lbl = QLabel("Data")
+        data_lbl.setStyleSheet("font-weight: bold; font-size: 14px;")
+        layout.addWidget(data_lbl)
+
+        export_btn = QPushButton("Export Data to CSV…")
+        export_btn.clicked.connect(self._export)
+        layout.addWidget(export_btn)
+
         layout.addSpacing(8)
 
+        # ── Buttons ──────────────────────────────────────────────────────────
         buttons = QDialogButtonBox(
             QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
         )
@@ -59,3 +77,13 @@ class SettingsDialog(QDialog):
         if theme != self._current:
             self.theme_changed.emit(theme)
         self.accept()
+
+    def _export(self) -> None:
+        path, _ = QFileDialog.getSaveFileName(
+            self, "Export Habit Data", "habit_data.csv", "CSV Files (*.csv)"
+        )
+        if path:
+            export_to_csv(path)
+            QMessageBox.information(
+                self, "Export Complete", f"Data exported to:\n{path}"
+            )

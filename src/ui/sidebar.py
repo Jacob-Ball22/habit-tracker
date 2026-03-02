@@ -106,12 +106,14 @@ class Sidebar(QWidget):
 
     category_selected = pyqtSignal(object)  # int | None
     add_habit_requested = pyqtSignal()
+    archived_selected = pyqtSignal()
 
     def __init__(self) -> None:
         super().__init__()
         self.setFixedWidth(168)
         self.setObjectName("sidebar")
         self._active: int | None = None
+        self._archived_active = False
         self._buttons: dict[int | None, _WordWrapButton] = {}
         self._border_color = "#000000"
 
@@ -167,7 +169,7 @@ class Sidebar(QWidget):
         self._buttons.clear()
 
         all_btn = self._build_button("All", None)
-        all_btn.setChecked(self._active is None)
+        all_btn.setChecked(self._active is None and not self._archived_active)
         self._layout.addWidget(all_btn)
 
         self._layout.addWidget(self._add_habit_row)
@@ -175,10 +177,18 @@ class Sidebar(QWidget):
 
         for cat in list_categories():
             btn = self._build_button(cat.name, cat.id)
-            btn.setChecked(self._active == cat.id)
+            btn.setChecked(self._active == cat.id and not self._archived_active)
             self._layout.addWidget(btn)
 
         self._layout.addStretch(1)
+
+        # Archived button at the bottom
+        self._archived_btn = _WordWrapButton("Archived")
+        self._archived_btn.setCheckable(True)
+        self._archived_btn.setObjectName("archivedBtn")
+        self._archived_btn.setChecked(self._archived_active)
+        self._archived_btn.clicked.connect(self._select_archived)
+        self._layout.addWidget(self._archived_btn)
 
     def _build_button(self, label: str, category_id: int | None) -> _WordWrapButton:
         btn = _WordWrapButton(label)
@@ -189,9 +199,20 @@ class Sidebar(QWidget):
 
     def _select(self, category_id: int | None) -> None:
         self._active = category_id
+        self._archived_active = False
         for cid, btn in self._buttons.items():
             btn.setChecked(cid == category_id)
+        if hasattr(self, "_archived_btn"):
+            self._archived_btn.setChecked(False)
         self.category_selected.emit(category_id)
+
+    def _select_archived(self) -> None:
+        self._archived_active = True
+        self._active = None
+        for btn in self._buttons.values():
+            btn.setChecked(False)
+        self._archived_btn.setChecked(True)
+        self.archived_selected.emit()
 
     def _add_focus_area(self) -> None:
         dlg = CategoryDialog(self)

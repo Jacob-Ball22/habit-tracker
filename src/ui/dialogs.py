@@ -5,10 +5,12 @@ from __future__ import annotations
 from typing import Optional
 
 from PyQt6.QtWidgets import (
+    QCheckBox,
     QComboBox,
     QDialog,
     QDialogButtonBox,
     QFormLayout,
+    QHBoxLayout,
     QLabel,
     QLineEdit,
     QMessageBox,
@@ -19,6 +21,26 @@ from PyQt6.QtWidgets import (
 
 from ..db import list_categories
 from ..models import Habit
+
+_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+
+
+def _frequency_to_checked(frequency: str) -> list[bool]:
+    """Convert a frequency string to a list of 7 booleans (Mon–Sun)."""
+    if frequency == "daily":
+        return [True] * 7
+    try:
+        scheduled = {int(d) for d in frequency.split(",")}
+        return [i in scheduled for i in range(7)]
+    except ValueError:
+        return [True] * 7
+
+
+def _checked_to_frequency(checked: list[bool]) -> str:
+    """Convert 7 booleans to a frequency string."""
+    if all(checked):
+        return "daily"
+    return ",".join(str(i) for i, c in enumerate(checked) if c)
 
 
 class HabitDialog(QDialog):
@@ -52,6 +74,23 @@ class HabitDialog(QDialog):
         form.addRow("Name *", self._name_edit)
         form.addRow("Description", self._desc_edit)
         form.addRow("Focus Area *", self._category_combo)
+
+        # ── Scheduled days checkboxes ─────────────────────────────────────
+        days_row = QHBoxLayout()
+        days_row.setSpacing(6)
+        self._day_checks: list[QCheckBox] = []
+        initial_checked = _frequency_to_checked(habit.frequency if habit else "daily")
+        for i, day in enumerate(_DAYS):
+            cb = QCheckBox(day)
+            cb.setChecked(initial_checked[i])
+            self._day_checks.append(cb)
+            days_row.addWidget(cb)
+        days_row.addStretch(1)
+
+        days_widget = QWidget()
+        days_widget.setLayout(days_row)
+        form.addRow("Scheduled Days", days_widget)
+
         layout.addLayout(form)
 
         buttons = QDialogButtonBox(
@@ -75,15 +114,19 @@ class HabitDialog(QDialog):
         if not self._categories:
             QMessageBox.warning(self, "Validation Error", "Please add a Focus Area first.")
             return
+        if not any(cb.isChecked() for cb in self._day_checks):
+            QMessageBox.warning(self, "Validation Error", "Select at least one scheduled day.")
+            return
         self.accept()
 
-    def get_values(self) -> tuple[str, Optional[str], int]:
-        """Return (name, description, category_id)."""
+    def get_values(self) -> tuple[str, Optional[str], int, str]:
+        """Return (name, description, category_id, frequency)."""
 
         name = self._name_edit.text().strip()
         desc = self._desc_edit.toPlainText().strip() or None
         category_id: int = self._category_combo.currentData()
-        return name, desc, category_id
+        frequency = _checked_to_frequency([cb.isChecked() for cb in self._day_checks])
+        return name, desc, category_id, frequency
 
 
 class CategoryDialog(QDialog):
