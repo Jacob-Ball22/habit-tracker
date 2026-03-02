@@ -15,14 +15,43 @@ A desktop habit tracking app built with Python and PyQt6. Organise habits into F
 - **Light & Dark mode** — Switch themes from the ⚙ settings button in the top right
 - **Fully local** — All data stored in a local SQLite database; no accounts or internet required
 
-## Setup
+## Getting Started
 
-**Requirements:** Python 3.11+
+### Prerequisites
 
-```bash
-pip install -r requirements.txt
-python main.py
-```
+- Python 3.11 or higher — [Download Python](https://www.python.org/downloads/)
+- Git — [Download Git](https://git-scm.com/downloads)
+
+### Installation
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/your-username/habit-tracker.git
+   cd habit-tracker
+   ```
+
+2. **Create and activate a virtual environment** (recommended)
+   ```bash
+   # macOS / Linux
+   python3 -m venv venv
+   source venv/bin/activate
+
+   # Windows
+   python -m venv venv
+   venv\Scripts\activate
+   ```
+
+3. **Install dependencies**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. **Run the app**
+   ```bash
+   python main.py
+   ```
+
+The SQLite database is created automatically at `data/habits.db` on first launch — no additional setup required.
 
 ## Project Structure
 
