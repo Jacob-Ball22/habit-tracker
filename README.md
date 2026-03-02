@@ -1,4 +1,4 @@
-# Habit Tracker
+# FluxFolio (Habit Tracker)
 
 A desktop habit tracking app built with Python and PyQt6. Organise habits into Focus Areas, mark daily completions, and visualise your consistency with a GitHub-style contribution heatmap.
 
