@@ -18,7 +18,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from ..db import create_habit, delete_habit, list_completions, list_habits, toggle_completion, update_habit
+from ..db import create_habit, delete_habit, get_completed_today, list_completions, list_habits, toggle_completion, update_habit
 from ..models import Habit
 from ..utils import today
 from .dialogs import HabitDialog
@@ -186,9 +186,9 @@ class HabitView(QWidget):
         self.refresh()
 
     def refresh(self) -> None:
-        """Clear and rebuild the habit card list."""
+        """Clear and rebuild the habit card list, split by today's completion status."""
 
-        # Remove all cards (everything except the trailing stretch)
+        # Remove all cards and section headers (everything except the trailing stretch)
         while self._cards_layout.count() > 1:
             item = self._cards_layout.takeAt(0)
             if item.widget():
@@ -199,11 +199,40 @@ class HabitView(QWidget):
         if habits:
             self._placeholder.hide()
             self._scroll.show()
-            for habit in habits:
+
+            completed_ids = get_completed_today()
+            incomplete = [h for h in habits if h.id not in completed_ids]
+            completed = [h for h in habits if h.id in completed_ids]
+
+            def _add_section_header(text: str) -> None:
+                lbl = QLabel(text)
+                lbl.setStyleSheet("font-size: 12px; font-weight: bold; color: #888; margin-top: 4px;")
+                self._cards_layout.insertWidget(self._cards_layout.count() - 1, lbl)
+
+            def _add_divider() -> None:
+                line = QFrame()
+                line.setFrameShape(QFrame.Shape.HLine)
+                line.setStyleSheet("color: #c8ccd0;")
+                self._cards_layout.insertWidget(self._cards_layout.count() - 1, line)
+
+            def _add_card(habit) -> None:
                 card = HabitCard(habit)
                 card.deleted.connect(lambda _: self.refresh())
+                card.changed.connect(self.refresh)
                 card.changed.connect(self.habit_changed.emit)
                 self._cards_layout.insertWidget(self._cards_layout.count() - 1, card)
+
+            if incomplete:
+                _add_section_header("STILL NEED TO COMPLETE")
+                for habit in incomplete:
+                    _add_card(habit)
+
+            if completed:
+                if incomplete:
+                    _add_divider()
+                _add_section_header("COMPLETED TODAY")
+                for habit in completed:
+                    _add_card(habit)
         else:
             self._scroll.hide()
             self._placeholder.show()

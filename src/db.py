@@ -146,6 +146,17 @@ def list_completions(habit_id: int) -> List[Completion]:
     ]
 
 
+def get_completed_today() -> set[int]:
+    """Return the set of habit IDs that have a completion entry for today."""
+
+    with get_connection() as conn:
+        rows = conn.execute(
+            "SELECT habit_id FROM completions WHERE completed_date = ?;",
+            (date.today().isoformat(),),
+        ).fetchall()
+    return {row["habit_id"] for row in rows}
+
+
 def toggle_completion(habit_id: int, completed_date: str) -> bool:
     """Toggle completion for a habit on a date. Returns True if now completed."""
 
