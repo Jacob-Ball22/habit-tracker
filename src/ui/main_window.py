@@ -484,7 +484,7 @@ class MainWindow(QMainWindow):
     def __init__(self) -> None:
         super().__init__()
         self._theme = "light"
-        self.setWindowTitle("Habit Tracker")
+        self.setWindowTitle("FluxFolio")
         self.setMinimumSize(1100, 700)
 
         root = QWidget(self)

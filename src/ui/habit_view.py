@@ -111,11 +111,6 @@ class HabitCard(QFrame):
             archive_btn.setMinimumWidth(70)
             archive_btn.clicked.connect(self._archive)
             top.addWidget(archive_btn)
-
-            delete_btn = QPushButton("Delete")
-            delete_btn.setMinimumWidth(60)
-            delete_btn.clicked.connect(self._delete)
-            top.addWidget(delete_btn)
         else:
             restore_btn = QPushButton("Restore")
             restore_btn.setObjectName("restoreBtn")
@@ -180,26 +175,25 @@ class HabitCard(QFrame):
             streak += 1
             d -= timedelta(days=1)
 
-        # This week (Mon → today)
-        week_start = today() - timedelta(days=today().weekday())
-        days_this_week = today().weekday() + 1
-        done_week = sum(
-            1 for i in range(days_this_week)
-            if week_start + timedelta(days=i) in dates
-        )
+        parts = [f"Total: {len(dates)}", f"Streak: {streak}d"]
 
-        # This month
-        first_of_month = today().replace(day=1)
-        days_this_month = today().day
-        done_month = sum(
-            1 for i in range(days_this_month)
-            if first_of_month + timedelta(days=i) in dates
-        )
+        if self._habit.weekly_goal > 0:
+            week_start = today() - timedelta(days=today().weekday())
+            done_week = sum(
+                1 for i in range(today().weekday() + 1)
+                if week_start + timedelta(days=i) in dates
+            )
+            parts.append(f"Week: {done_week}/{self._habit.weekly_goal}")
 
-        self._count_label.setText(
-            f"Total: {len(dates)}  |  Streak: {streak}d  |  "
-            f"Week: {done_week}/{days_this_week}  |  Month: {done_month}/{days_this_month}"
-        )
+        if self._habit.monthly_goal > 0:
+            first_of_month = today().replace(day=1)
+            done_month = sum(
+                1 for i in range(today().day)
+                if first_of_month + timedelta(days=i) in dates
+            )
+            parts.append(f"Month: {done_month}/{self._habit.monthly_goal}")
+
+        self._count_label.setText("  |  ".join(parts))
 
         if not self._archived_mode:
             is_done_today = today() in dates
@@ -227,14 +221,16 @@ class HabitCard(QFrame):
     def _edit(self) -> None:
         dlg = HabitDialog(self, self._habit)
         if dlg.exec() == QDialog.DialogCode.Accepted:
-            name, desc, cat_id, frequency = dlg.get_values()
-            update_habit(self._habit.id, name, desc, cat_id, frequency)
+            name, desc, cat_id, frequency, weekly_goal, monthly_goal = dlg.get_values()
+            update_habit(self._habit.id, name, desc, cat_id, frequency, weekly_goal, monthly_goal)
             self._habit = dataclasses.replace(
                 self._habit,
                 name=name,
                 description=desc,
                 category_id=cat_id,
                 frequency=frequency,
+                weekly_goal=weekly_goal,
+                monthly_goal=monthly_goal,
             )
             self._refresh_data()
             self.changed.emit()
@@ -401,8 +397,8 @@ class HabitView(QWidget):
     def show_add_habit_dialog(self) -> None:
         dlg = HabitDialog(self)
         if dlg.exec() == QDialog.DialogCode.Accepted:
-            name, desc, cat_id, frequency = dlg.get_values()
-            create_habit(name, desc, cat_id, frequency)
+            name, desc, cat_id, frequency, weekly_goal, monthly_goal = dlg.get_values()
+            create_habit(name, desc, cat_id, frequency, weekly_goal, monthly_goal)
             self.refresh()
             self.habit_changed.emit()
 

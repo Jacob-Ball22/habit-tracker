@@ -104,9 +104,11 @@ habit-tracker/
 | Heatmap & Charts | Custom QPainter rendering |
 
 ## Future Improvements
-- Add capabilities to attach daily/weekly habits to your calendar of choice or a push notification to your mobile device
-- Add ability to seperate chart by months
-- Be able to change tracking chart to track progress by each week or each month
+- Add the ability to have a notes section
+- Add notifications for when you need a reminder to do a task
+- Add support to download off of a website
+- Add a logo
+- Create search support for finding habits or notes quickly
 
 ## Author
 Jacob Ball — Master's in Data Science, Fordham University

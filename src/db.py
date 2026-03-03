@@ -56,6 +56,8 @@ def init_db() -> None:
         for col, defn in [
             ("sort_order", "INTEGER DEFAULT 0"),
             ("frequency", "TEXT DEFAULT 'daily'"),
+            ("weekly_goal", "INTEGER DEFAULT 0"),
+            ("monthly_goal", "INTEGER DEFAULT 0"),
         ]:
             try:
                 conn.execute(f"ALTER TABLE habits ADD COLUMN {col} {defn};")
@@ -97,6 +99,8 @@ def _row_to_habit(row: sqlite3.Row) -> Habit:
         is_active=bool(row["is_active"]),
         sort_order=row["sort_order"] if row["sort_order"] is not None else 0,
         frequency=row["frequency"] or "daily",
+        weekly_goal=row["weekly_goal"] if row["weekly_goal"] is not None else 0,
+        monthly_goal=row["monthly_goal"] if row["monthly_goal"] is not None else 0,
     )
 
 
@@ -111,7 +115,7 @@ def list_habits(category_id: Optional[int] = None) -> List[Habit]:
 
     where = " AND ".join(conditions)
     query = (
-        f"SELECT id, name, description, category_id, created_at, is_active, sort_order, frequency "
+        f"SELECT id, name, description, category_id, created_at, is_active, sort_order, frequency, weekly_goal, monthly_goal "
         f"FROM habits WHERE {where} ORDER BY sort_order ASC, created_at DESC, name;"
     )
     with get_connection() as conn:
@@ -130,7 +134,7 @@ def list_archived_habits(category_id: Optional[int] = None) -> List[Habit]:
 
     where = " AND ".join(conditions)
     query = (
-        f"SELECT id, name, description, category_id, created_at, is_active, sort_order, frequency "
+        f"SELECT id, name, description, category_id, created_at, is_active, sort_order, frequency, weekly_goal, monthly_goal "
         f"FROM habits WHERE {where} ORDER BY name;"
     )
     with get_connection() as conn:
@@ -141,19 +145,21 @@ def list_archived_habits(category_id: Optional[int] = None) -> List[Habit]:
 def create_habit(
     name: str,
     description: Optional[str],
-    category_id: int,
+    category_id: Optional[int],
     frequency: str = "daily",
+    weekly_goal: int = 0,
+    monthly_goal: int = 0,
 ) -> Habit:
     """Create and return a new habit."""
 
     with get_connection() as conn:
         cur = conn.execute(
-            "INSERT INTO habits (name, description, category_id, frequency) VALUES (?, ?, ?, ?);",
-            (name, description, category_id, frequency),
+            "INSERT INTO habits (name, description, category_id, frequency, weekly_goal, monthly_goal) VALUES (?, ?, ?, ?, ?, ?);",
+            (name, description, category_id, frequency, weekly_goal, monthly_goal),
         )
         habit_id = cur.lastrowid
         row = conn.execute(
-            "SELECT id, name, description, category_id, created_at, is_active, sort_order, frequency "
+            "SELECT id, name, description, category_id, created_at, is_active, sort_order, frequency, weekly_goal, monthly_goal "
             "FROM habits WHERE id = ?;",
             (habit_id,),
         ).fetchone()
@@ -211,15 +217,17 @@ def update_habit(
     habit_id: int,
     name: str,
     description: Optional[str],
-    category_id: int,
+    category_id: Optional[int],
     frequency: str = "daily",
+    weekly_goal: int = 0,
+    monthly_goal: int = 0,
 ) -> None:
     """Update name, description, category, and frequency for an existing habit."""
 
     with get_connection() as conn:
         conn.execute(
-            "UPDATE habits SET name = ?, description = ?, category_id = ?, frequency = ? WHERE id = ?;",
-            (name, description, category_id, frequency, habit_id),
+            "UPDATE habits SET name = ?, description = ?, category_id = ?, frequency = ?, weekly_goal = ?, monthly_goal = ? WHERE id = ?;",
+            (name, description, category_id, frequency, weekly_goal, monthly_goal, habit_id),
         )
 
 
@@ -264,7 +272,7 @@ def export_to_csv(filepath: str) -> None:
                 c.name        AS focus_area,
                 co.completed_date
             FROM habits h
-            JOIN categories c ON c.id = h.category_id
+            LEFT JOIN categories c ON c.id = h.category_id
             LEFT JOIN completions co ON co.habit_id = h.id
             ORDER BY h.name, co.completed_date;
             """

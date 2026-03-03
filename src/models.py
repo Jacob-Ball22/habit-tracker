@@ -23,11 +23,13 @@ class Habit:
     id: int
     name: str
     description: Optional[str]
-    category_id: int
+    category_id: Optional[int]
     created_at: date
     is_active: bool = True
     sort_order: int = 0
     frequency: str = "daily"  # 'daily' or comma-separated weekday ints e.g. '0,1,2,3,4' (Mon=0)
+    weekly_goal: int = 0   # 0 = show elapsed days as denominator
+    monthly_goal: int = 0  # 0 = show elapsed days as denominator
 
 
 @dataclass(frozen=True)
